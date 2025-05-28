@@ -1,32 +1,39 @@
-// lib/models/player.dart
 class Player {
-  final String playerId;
-  final String name;
-  final String position;
+  final int id;
+  final String first_name;
+  final String last_name;
   final int? number;
-  final String? photo;
-  final int? age;
-  final String? nationality;
+  final String position;
+  final int? teamId;
 
   Player({
-    required this.playerId,
-    required this.name,
-    required this.position,
+    required this.id,
+    required this.first_name,
+    required this.last_name,
     this.number,
-    this.photo,
-    this.age,
-    this.nationality,
+    this.position = 'Position non définie',
+    this.teamId,
   });
 
   factory Player.fromJson(Map<String, dynamic> json) {
     return Player(
-      playerId: json['playerId'] ?? '',
-      name: json['name'] ?? '',
-      position: json['position'] ?? '',
-      number: json['number'],
-      photo: json['photo'],
-      age: json['age'],
-      nationality: json['nationality'],
+      id: json['Player_Id'] as int,
+      first_name: json['first_name'] as String,
+      last_name: json['last_name'] as String,
+      number: json['number'] as int?,
+      position: json['position'] as String? ?? 'Non défini',
+      teamId: json['Team_Id'] as int?,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'Player_Id': id,
+      'first_name': first_name,
+      'last_name': last_name,
+      'number': number,
+      'position': position,
+      'Team_Id': teamId,
+    };
   }
 }

@@ -2,6 +2,7 @@ import 'package:aviron_castrais_rugby/screens/tournament_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:aviron_castrais_rugby/services/tournament_service.dart';
 import 'package:aviron_castrais_rugby/models/tournament.dart';
+import 'package:aviron_castrais_rugby/config/api_config.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -222,7 +223,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 AspectRatio(
                   aspectRatio: 16 / 6,
                   child: Image.network(
-                    tournament.image,
+                    ApiConfig.resolveImageUrl(tournament.image),
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
