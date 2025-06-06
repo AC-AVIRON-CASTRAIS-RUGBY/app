@@ -5,6 +5,7 @@ class Player {
   final int? number;
   final String position;
   final int? teamId;
+  final bool present;
 
   Player({
     required this.id,
@@ -13,16 +14,18 @@ class Player {
     this.number,
     this.position = 'Position non définie',
     this.teamId,
+    this.present = true,
   });
 
   factory Player.fromJson(Map<String, dynamic> json) {
     return Player(
       id: json['Player_Id'] as int,
-      first_name: json['first_name'] as String,
-      last_name: json['last_name'] as String,
+      first_name: json['first_name'] as String? ?? '',
+      last_name: json['last_name'] as String? ?? '',
       number: json['number'] as int?,
       position: json['position'] as String? ?? 'Non défini',
       teamId: json['Team_Id'] as int?,
+      present: json['present'] == 1 || json['present'] == true,
     );
   }
 
@@ -34,6 +37,7 @@ class Player {
       'number': number,
       'position': position,
       'Team_Id': teamId,
+      'present': present,
     };
   }
 }

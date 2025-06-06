@@ -2,8 +2,9 @@ import 'package:aviron_castrais_rugby/screens/team_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:aviron_castrais_rugby/models/team.dart';
 import 'package:aviron_castrais_rugby/models/tournament.dart';
+import 'package:aviron_castrais_rugby/models/category.dart';
 import 'package:aviron_castrais_rugby/services/team_service.dart';
-import 'package:aviron_castrais_rugby/config/api_config.dart';
+import 'package:aviron_castrais_rugby/services/category_service.dart';
 
 class TeamsScreen extends StatefulWidget {
   final Tournament tournament;
@@ -19,34 +20,49 @@ class TeamsScreen extends StatefulWidget {
 
 class _TeamsScreenState extends State<TeamsScreen> {
   final TeamService _teamService = TeamService();
+  final CategoryService _categoryService = CategoryService();
   List<Team> _teams = [];
   List<Team> _filteredTeams = [];
-  Set<String> _categories = {};
-  String? _selectedCategory;
+  List<Category> _categories = [];
+  Map<int, String> _categoryNames = {};
+  String? _selectedCategoryName;
   bool _isLoading = true;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    _loadTeams();
+    _loadData();
   }
 
-  Future<void> _loadTeams() async {
+  Future<void> _loadData() async {
     try {
       setState(() {
         _isLoading = true;
         _error = null;
       });
 
-      final teams = await _teamService.getTeamsByTournament(widget.tournament.tournamentId);
-      final categories = teams.map((team) => team.ageCategory ?? 'Non spécifié').toSet();
+      // Charger les équipes et catégories en parallèle
+      final results = await Future.wait([
+        _teamService.getTeamsByTournament(widget.tournament.tournamentId),
+        _categoryService.getCategoriesByTournament(widget.tournament.tournamentId),
+      ]);
+
+      final teams = results[0] as List<Team>;
+      final categories = results[1] as List<Category>;
+
+      // Créer un map des noms de catégories par ID
+      final categoryNames = <int, String>{};
+      for (var category in categories) {
+        categoryNames[category.categoryId] = category.name.toUpperCase();
+      }
 
       setState(() {
         _teams = teams;
         _filteredTeams = teams;
         _categories = categories;
-        _selectedCategory = null;
+        _categoryNames = categoryNames;
+        _selectedCategoryName = null;
         _isLoading = false;
       });
     } catch (e) {
@@ -57,13 +73,16 @@ class _TeamsScreenState extends State<TeamsScreen> {
     }
   }
 
-  void _filterByCategory(String? category) {
+  void _filterByCategory(String? categoryName) {
     setState(() {
-      _selectedCategory = category;
-      if (category == null) {
+      _selectedCategoryName = categoryName;
+      if (categoryName == null) {
         _filteredTeams = _teams;
       } else {
-        _filteredTeams = _teams.where((team) => (team.ageCategory ?? 'Non spécifié') == category).toList();
+        _filteredTeams = _teams.where((team) {
+          final teamCategoryName = _categoryNames[team.categoryId] ?? 'Non spécifié';
+          return teamCategoryName == categoryName;
+        }).toList();
       }
       _filteredTeams.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
     });
@@ -72,6 +91,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
   @override
   void dispose() {
     _teamService.dispose();
+    _categoryService.dispose();
     super.dispose();
   }
 
@@ -83,7 +103,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
           _buildCategoryFilter(),
         Expanded(
           child: RefreshIndicator(
-            onRefresh: _loadTeams,
+            onRefresh: _loadData,
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _error != null
@@ -98,6 +118,12 @@ class _TeamsScreenState extends State<TeamsScreen> {
   }
 
   Widget _buildCategoryFilter() {
+    final availableCategoryNames = _teams
+        .map((team) => _categoryNames[team.categoryId] ?? 'Non spécifié')
+        .toSet()
+        .toList()
+      ..sort();
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Column(
@@ -116,7 +142,8 @@ class _TeamsScreenState extends State<TeamsScreen> {
             child: Row(
               children: [
                 _buildCategoryChip(null, 'Toutes'),
-                ..._categories.map((category) => _buildCategoryChip(category, category)),
+                ...availableCategoryNames.map((categoryName) => 
+                  _buildCategoryChip(categoryName, categoryName)),
               ],
             ),
           ),
@@ -126,12 +153,12 @@ class _TeamsScreenState extends State<TeamsScreen> {
     );
   }
 
-  Widget _buildCategoryChip(String? category, String label) {
-    final isSelected = _selectedCategory == category;
+  Widget _buildCategoryChip(String? categoryName, String label) {
+    final isSelected = _selectedCategoryName == categoryName;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: FilterChip(
-        label: Text(label.toUpperCase()),
+        label: Text(label),
         selected: isSelected,
         selectedColor: const Color(0xFF233268).withOpacity(0.2),
         checkmarkColor: const Color(0xFF233268),
@@ -140,7 +167,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
           color: isSelected ? const Color(0xFF233268) : Colors.black,
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
         ),
-        onSelected: (_) => _filterByCategory(category),
+        onSelected: (_) => _filterByCategory(categoryName),
       ),
     );
   }
@@ -157,7 +184,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
           ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: _loadTeams,
+            onPressed: _loadData,
             child: const Text('Réessayer'),
           ),
         ],
@@ -173,9 +200,9 @@ class _TeamsScreenState extends State<TeamsScreen> {
           const Icon(Icons.group_off, size: 64, color: Colors.grey),
           const SizedBox(height: 16),
           Text(
-            _selectedCategory == null
+            _selectedCategoryName == null
                 ? 'Aucune équipe inscrite à ce tournoi'
-                : 'Aucune équipe dans la catégorie ${_selectedCategory!.toUpperCase()}',
+                : 'Aucune équipe dans la catégorie $_selectedCategoryName',
           ),
           const SizedBox(height: 8),
           const Text(
@@ -188,21 +215,22 @@ class _TeamsScreenState extends State<TeamsScreen> {
   }
 
   Widget _buildTeamsList() {
+    // Regrouper les équipes par nom de catégorie
     Map<String, List<Team>> teamsByCategory = {};
 
     for (var team in _filteredTeams) {
-      final category = team.ageCategory ?? 'Non spécifié';
-      if (!teamsByCategory.containsKey(category)) {
-        teamsByCategory[category] = [];
+      final categoryName = _categoryNames[team.categoryId] ?? 'Non spécifié';
+      if (!teamsByCategory.containsKey(categoryName)) {
+        teamsByCategory[categoryName] = [];
       }
-      teamsByCategory[category]!.add(team);
+      teamsByCategory[categoryName]!.add(team);
     }
 
     teamsByCategory.forEach((category, teams) {
       teams.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
     });
 
-    if (_selectedCategory != null) {
+    if (_selectedCategoryName != null) {
       return ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(12),
@@ -227,7 +255,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 8, top: 8),
               child: Text(
-                category.toUpperCase(),
+                category,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -262,58 +290,58 @@ class _TeamsScreenState extends State<TeamsScreen> {
               ),
             ),
           );
-        },
-        child: ListTile(
-          contentPadding: const EdgeInsets.all(12),
-          leading: CircleAvatar(
-            radius: 25,
-            backgroundColor: Colors.grey[200],
-            child: team.logo != null && team.logo!.isNotEmpty
-                ? ClipOval(
-                    child: Image.network(
-                      team.logo!,
-                      width: 50,
-                      height: 50,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return Text(
-                          team.name.isNotEmpty ? team.name[0].toUpperCase() : '?',
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey,
-                          ),
-                        );
-                      },
+          },
+          child: ListTile(
+            contentPadding: const EdgeInsets.all(12),
+            leading: CircleAvatar(
+              radius: 25,
+              backgroundColor: Colors.grey[200],
+              child: team.logo != null && team.logo!.isNotEmpty
+                  ? ClipOval(
+                      child: Image.network(
+                        team.logo!,
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          );
+                        },
+                        errorBuilder: (context, error, stackTrace) {
+                          return Text(
+                            team.name.isNotEmpty ? team.name[0].toUpperCase() : '?',
+                            style: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  : Text(
+                      team.name.isNotEmpty ? team.name[0].toUpperCase() : '?',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
                     ),
-                  )
-                : Text(
-                    team.name.isNotEmpty ? team.name[0].toUpperCase() : '?',
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey,
-                    ),
-                  ),
-          ),
-          title: Text(
-            team.name,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
             ),
+            title: Text(
+              team.name,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+            trailing: const Icon(Icons.chevron_right),
           ),
-          trailing: const Icon(Icons.chevron_right),
         ),
-      ),
     );
   }
 }

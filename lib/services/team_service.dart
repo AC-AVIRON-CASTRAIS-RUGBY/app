@@ -6,7 +6,7 @@ class TeamService {
 
   Future<List<Team>> getTeamsByTournament(int tournamentId) async {
     try {
-      final response = await _apiService.get('teams/$tournamentId');
+      final response = await _apiService.get('teams/tournaments/$tournamentId');
 
       // Vérifier si la réponse est une erreur (sous forme de Map)
       if (response is Map && response.containsKey('error')) {

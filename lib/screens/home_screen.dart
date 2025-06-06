@@ -32,9 +32,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _scrollListener() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
-      _loadTournaments();
-    }
+    // Supprimer la logique de rechargement automatique qui cause le problème
+    // L'utilisateur peut utiliser le pull-to-refresh pour actualiser
   }
 
   Future<void> _loadTournaments() async {

@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:aviron_castrais_rugby/models/tournament.dart';
 import 'package:aviron_castrais_rugby/models/schedule.dart';
+import 'package:aviron_castrais_rugby/models/team.dart';
+import 'package:aviron_castrais_rugby/models/category.dart';
 import 'package:aviron_castrais_rugby/services/tournament_service.dart';
+import 'package:aviron_castrais_rugby/services/team_service.dart';
+import 'package:aviron_castrais_rugby/services/category_service.dart';
 import 'package:intl/intl.dart';
 import 'package:aviron_castrais_rugby/screens/match_detail_screen.dart';
 
@@ -17,6 +21,8 @@ class ScheduleScreen extends StatefulWidget {
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
   final TournamentService _tournamentService = TournamentService();
+  final TeamService _teamService = TeamService();
+  final CategoryService _categoryService = CategoryService();
   final TextEditingController _searchController = TextEditingController();
   Schedule? _schedule;
   bool _isLoading = true;
@@ -26,14 +32,16 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   List<String> _filteredTeams = [];
   bool _showSuggestions = false;
   String? _selectedTeam;
+  Map<String, String> _teamCategories = {}; // Map nom équipe -> catégorie
 
   @override
   void initState() {
     super.initState();
     if (widget.selectedTeamName != null) {
-      _selectedTeam = widget.selectedTeamName;
+      // Pré-remplir seulement la barre de recherche, ne pas filtrer automatiquement
       _searchController.text = widget.selectedTeamName!;
       _searchQuery = widget.selectedTeamName!;
+      // Ne pas définir _selectedTeam pour éviter le filtrage automatique
     }
     _loadSchedule();
   }
@@ -45,7 +53,29 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         _error = null;
       });
 
-      final schedule = await _tournamentService.getSchedule(widget.tournament.tournamentId);
+      // Charger les données en parallèle
+      final results = await Future.wait([
+        _tournamentService.getSchedule(widget.tournament.tournamentId),
+        _teamService.getTeamsByTournament(widget.tournament.tournamentId),
+        _categoryService.getCategoriesByTournament(widget.tournament.tournamentId),
+      ]);
+
+      final schedule = results[0] as Schedule;
+      final teams = results[1] as List<Team>;
+      final categories = results[2] as List<Category>;
+
+      // Créer un map des catégories par ID
+      final categoryMap = <int, String>{};
+      for (var category in categories) {
+        categoryMap[category.categoryId] = category.name.toUpperCase();
+      }
+
+      // Créer un map des catégories par nom d'équipe
+      final teamCategories = <String, String>{};
+      for (var team in teams) {
+        final categoryName = categoryMap[team.categoryId] ?? 'NON SPÉCIFIÉE';
+        teamCategories[team.name] = categoryName;
+      }
 
       // Extraire toutes les équipes pour les suggestions
       Set<String> teamsSet = {};
@@ -60,6 +90,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         _schedule = schedule;
         _allTeams = teamsSet.toList()..sort();
         _filteredTeams = _allTeams;
+        _teamCategories = teamCategories;
         _isLoading = false;
       });
     } catch (e) {
@@ -106,6 +137,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       allGames.addAll(games);
     });
 
+    // Filtrer seulement si l'utilisateur a explicitement sélectionné une équipe
     if (_selectedTeam == null || _selectedTeam!.isEmpty) {
       return allGames;
     }
@@ -120,6 +152,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   void dispose() {
     _searchController.dispose();
     _tournamentService.dispose();
+    _teamService.dispose();
+    _categoryService.dispose();
     super.dispose();
   }
 
@@ -146,91 +180,96 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // Barre de recherche
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.2),
-                spreadRadius: 1,
-                blurRadius: 3,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              TextField(
-                controller: _searchController,
-                decoration: InputDecoration(
-                  hintText: 'Rechercher une équipe...',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchQuery.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.clear),
-                          onPressed: _clearSearch,
-                        )
-                      : null,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  filled: true,
-                  fillColor: Colors.grey[50],
+    return Material(
+      child: Column(
+        children: [
+          // Barre de recherche
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.withOpacity(0.2),
+                  spreadRadius: 1,
+                  blurRadius: 3,
+                  offset: const Offset(0, 2),
                 ),
-                onChanged: _filterTeams,
-                onTap: () {
-                  if (_searchQuery.isNotEmpty) {
-                    setState(() {
-                      _showSuggestions = true;
-                    });
-                  }
-                },
-              ),
-              if (_showSuggestions && _filteredTeams.isNotEmpty)
-                Container(
-                  margin: const EdgeInsets.only(top: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey[300]!),
+              ],
+            ),
+            child: Column(
+              children: [
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Rechercher une équipe...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: _clearSearch,
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey[50],
                   ),
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _filteredTeams.length > 5 ? 5 : _filteredTeams.length,
-                    itemBuilder: (context, index) {
-                      final team = _filteredTeams[index];
-                      return ListTile(
-                        title: Text(team),
-                        onTap: () => _selectTeam(team),
-                      );
-                    },
-                  ),
+                  onChanged: _filterTeams,
+                  onTap: () {
+                    if (_searchQuery.isNotEmpty) {
+                      setState(() {
+                        _showSuggestions = true;
+                      });
+                    }
+                  },
                 ),
-            ],
+                if (_showSuggestions && _filteredTeams.isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[300]!),
+                    ),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _filteredTeams.length > 5 ? 5 : _filteredTeams.length,
+                      itemBuilder: (context, index) {
+                        final team = _filteredTeams[index];
+                        final category = _teamCategories[team] ?? 'U?';
+                        return ListTile(
+                          title: Text('$team ($category)'),
+                          onTap: () {
+                            _selectTeam(team);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
 
-        // Contenu principal
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _loadSchedule,
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _error != null
-                ? _buildErrorWidget()
-                : _schedule == null || _schedule!.schedule.isEmpty
-                ? _buildEmptyWidget()
-                : _selectedTeam != null
-                ? _buildFilteredGamesList()
-                : _buildScheduleList(),
+          // Contenu principal
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _loadSchedule,
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                  ? _buildErrorWidget()
+                  : _schedule == null || _schedule!.schedule.isEmpty
+                  ? _buildEmptyWidget()
+                  : _selectedTeam != null
+                  ? _buildFilteredGamesList()
+                  : _buildScheduleList(),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 

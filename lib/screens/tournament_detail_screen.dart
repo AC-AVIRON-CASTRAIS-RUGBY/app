@@ -9,8 +9,15 @@ import 'package:intl/intl.dart';
 
 class TournamentDetailScreen extends StatefulWidget {
   final Tournament tournament;
+  final int initialTabIndex;
+  final String? selectedTeamName;
 
-  const TournamentDetailScreen({Key? key, required this.tournament}) : super(key: key);
+  const TournamentDetailScreen({
+    Key? key, 
+    required this.tournament,
+    this.initialTabIndex = 0,
+    this.selectedTeamName,
+  }) : super(key: key);
 
   @override
   State<TournamentDetailScreen> createState() => _TournamentDetailScreenState();
@@ -18,7 +25,14 @@ class TournamentDetailScreen extends StatefulWidget {
 
 class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
   int _selectedIndex = 0;
-  final PageController _pageController = PageController(initialPage: 0);
+  late PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialTabIndex;
+    _pageController = PageController(initialPage: widget.initialTabIndex);
+  }
 
   @override
   void dispose() {
@@ -63,7 +77,10 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
           _buildTournamentInfoPage(),
           TeamsScreen(tournament: widget.tournament),
           StandingsScreen(tournament: widget.tournament),
-          ScheduleScreen(tournament: widget.tournament),
+          ScheduleScreen(
+            tournament: widget.tournament,
+            selectedTeamName: widget.selectedTeamName,
+          ),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
