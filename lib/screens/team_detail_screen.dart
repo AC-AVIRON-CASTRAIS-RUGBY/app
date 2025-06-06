@@ -6,7 +6,6 @@ import 'package:aviron_castrais_rugby/models/player.dart';
 import 'package:aviron_castrais_rugby/models/category.dart';
 import 'package:aviron_castrais_rugby/services/player_service.dart';
 import 'package:aviron_castrais_rugby/services/category_service.dart';
-import 'package:aviron_castrais_rugby/screens/schedule_screen.dart';
 import 'package:aviron_castrais_rugby/screens/tournament_detail_screen.dart';
 
 class TeamDetailScreen extends StatefulWidget {

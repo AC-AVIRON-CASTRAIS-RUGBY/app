@@ -56,6 +56,7 @@ class _RefereeMatchesScreenState extends State<RefereeMatchesScreen> {
         _error = null;
       });
 
+      // Un seul appel API - les noms d'équipes sont déjà inclus dans la réponse
       final games = await _refereeService.getRefereeGames(AuthService.refereeId!);
 
       setState(() {
@@ -70,7 +71,10 @@ class _RefereeMatchesScreenState extends State<RefereeMatchesScreen> {
     }
   }
 
-  String _formatDateTime(DateTime dateTime) {
+  String _formatDateTime(DateTime? dateTime) {
+    if (dateTime == null) {
+      return 'Horaire non défini';
+    }
     final formatter = DateFormat('EEEE d MMMM yyyy à HH:mm', 'fr_FR');
     String formatted = formatter.format(dateTime);
     return formatted[0].toUpperCase() + formatted.substring(1);
@@ -193,7 +197,11 @@ class _RefereeMatchesScreenState extends State<RefereeMatchesScreen> {
 
   Widget _buildGameCard(RefereeGame game) {
     final isCompleted = game.isCompleted;
-    final isPast = game.startTime.isBefore(DateTime.now());
+    final isPast = game.startTime?.isBefore(DateTime.now()) ?? false;
+    
+    // Utiliser directement les noms d'équipes de l'API
+    final team1DisplayName = game.team1Name ?? 'Équipe ${game.team1Id}';
+    final team2DisplayName = game.team2Name ?? 'Équipe ${game.team2Id}';
     
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -243,6 +251,8 @@ class _RefereeMatchesScreenState extends State<RefereeMatchesScreen> {
                               ? Colors.green
                               : isPast
                               ? Colors.orange
+                              : game.startTime == null
+                              ? Colors.grey
                               : const Color(0xFF233268),
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -251,6 +261,8 @@ class _RefereeMatchesScreenState extends State<RefereeMatchesScreen> {
                               ? 'Terminé'
                               : isPast
                               ? 'En cours'
+                              : game.startTime == null
+                              ? 'Programmé'
                               : 'À venir',
                           style: const TextStyle(
                             color: Colors.white,
@@ -308,12 +320,14 @@ class _RefereeMatchesScreenState extends State<RefereeMatchesScreen> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                game.team1Name ?? 'Équipe ${game.team1Id}',
+                                team1DisplayName,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                                  fontSize: 14,
                                 ),
                                 textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             if (isCompleted) ...[
@@ -362,12 +376,14 @@ class _RefereeMatchesScreenState extends State<RefereeMatchesScreen> {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                game.team2Name ?? 'Équipe ${game.team2Id}',
+                                team2DisplayName,
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                                  fontSize: 14,
                                 ),
                                 textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                             if (isCompleted) ...[
@@ -398,14 +414,19 @@ class _RefereeMatchesScreenState extends State<RefereeMatchesScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.access_time, size: 20, color: Color(0xFF233268)),
+                        Icon(
+                          game.startTime == null ? Icons.schedule : Icons.access_time,
+                          size: 20,
+                          color: game.startTime == null ? Colors.grey : const Color(0xFF233268),
+                        ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
                             _formatDateTime(game.startTime),
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
+                              color: game.startTime == null ? Colors.grey : Colors.black,
                             ),
                           ),
                         ),
@@ -454,6 +475,10 @@ class _RefereeMatchesScreenState extends State<RefereeMatchesScreen> {
     final team2ScoreController = TextEditingController(text: game.team2Score.toString());
     bool isCompleted = false;
 
+    // Utiliser directement les noms d'équipes de l'API
+    final team1DisplayName = game.team1Name ?? 'Équipe ${game.team1Id}';
+    final team2DisplayName = game.team2Name ?? 'Équipe ${game.team2Id}';
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -467,7 +492,7 @@ class _RefereeMatchesScreenState extends State<RefereeMatchesScreen> {
                   children: [
                     // Équipes
                     Text(
-                      '${game.team1Name ?? 'Équipe ${game.team1Id}'} vs ${game.team2Name ?? 'Équipe ${game.team2Id}'}',
+                      '$team1DisplayName vs $team2DisplayName',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -484,9 +509,11 @@ class _RefereeMatchesScreenState extends State<RefereeMatchesScreen> {
                           child: Column(
                             children: [
                               Text(
-                                game.team1Name ?? 'Équipe ${game.team1Id}',
+                                team1DisplayName,
                                 style: const TextStyle(fontWeight: FontWeight.w500),
                                 textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 8),
                               TextField(
@@ -514,9 +541,11 @@ class _RefereeMatchesScreenState extends State<RefereeMatchesScreen> {
                           child: Column(
                             children: [
                               Text(
-                                game.team2Name ?? 'Équipe ${game.team2Id}',
+                                team2DisplayName,
                                 style: const TextStyle(fontWeight: FontWeight.w500),
                                 textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                               ),
                               const SizedBox(height: 8),
                               TextField(
