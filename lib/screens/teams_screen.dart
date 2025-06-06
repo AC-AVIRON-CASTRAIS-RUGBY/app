@@ -40,7 +40,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
       });
 
       final teams = await _teamService.getTeamsByTournament(widget.tournament.tournamentId);
-      final categories = teams.map((team) => team.ageCategory).toSet();
+      final categories = teams.map((team) => team.ageCategory ?? 'Non spécifié').toSet();
 
       setState(() {
         _teams = teams;
@@ -63,9 +63,9 @@ class _TeamsScreenState extends State<TeamsScreen> {
       if (category == null) {
         _filteredTeams = _teams;
       } else {
-        _filteredTeams = _teams.where((team) => team.ageCategory == category).toList();
+        _filteredTeams = _teams.where((team) => (team.ageCategory ?? 'Non spécifié') == category).toList();
       }
-      _filteredTeams.sort((a, b) => a.name.compareTo(b.name));
+      _filteredTeams.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
     });
   }
 
@@ -131,7 +131,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: FilterChip(
-        label: Text(label),
+        label: Text(label.toUpperCase()),
         selected: isSelected,
         selectedColor: const Color(0xFF233268).withOpacity(0.2),
         checkmarkColor: const Color(0xFF233268),
@@ -175,7 +175,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
           Text(
             _selectedCategory == null
                 ? 'Aucune équipe inscrite à ce tournoi'
-                : 'Aucune équipe dans la catégorie $_selectedCategory',
+                : 'Aucune équipe dans la catégorie ${_selectedCategory!.toUpperCase()}',
           ),
           const SizedBox(height: 8),
           const Text(
@@ -188,22 +188,20 @@ class _TeamsScreenState extends State<TeamsScreen> {
   }
 
   Widget _buildTeamsList() {
-    // Regrouper les équipes par catégorie
     Map<String, List<Team>> teamsByCategory = {};
 
     for (var team in _filteredTeams) {
-      if (!teamsByCategory.containsKey(team.ageCategory)) {
-        teamsByCategory[team.ageCategory] = [];
+      final category = team.ageCategory ?? 'Non spécifié';
+      if (!teamsByCategory.containsKey(category)) {
+        teamsByCategory[category] = [];
       }
-      teamsByCategory[team.ageCategory]!.add(team);
+      teamsByCategory[category]!.add(team);
     }
 
-    // Trier les équipes par ordre alphabétique dans chaque catégorie
     teamsByCategory.forEach((category, teams) {
-      teams.sort((a, b) => a.name.compareTo(b.name));
+      teams.sort((a, b) => (a.name ?? '').compareTo(b.name ?? ''));
     });
 
-    // Si un filtre est appliqué, on n'affiche qu'une seule catégorie
     if (_selectedCategory != null) {
       return ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -213,7 +211,6 @@ class _TeamsScreenState extends State<TeamsScreen> {
       );
     }
 
-    // Sinon, on affiche les équipes regroupées par catégorie
     List<String> sortedCategories = teamsByCategory.keys.toList()..sort();
 
     return ListView.builder(
@@ -230,7 +227,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
             Padding(
               padding: const EdgeInsets.only(left: 4, bottom: 8, top: 8),
               child: Text(
-                category,
+                category.toUpperCase(),
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -274,7 +271,7 @@ class _TeamsScreenState extends State<TeamsScreen> {
             child: team.logo != null && team.logo!.isNotEmpty
                 ? ClipOval(
                     child: Image.network(
-                      ApiConfig.resolveImageUrl(team.logo!),
+                      team.logo!,
                       width: 50,
                       height: 50,
                       fit: BoxFit.cover,

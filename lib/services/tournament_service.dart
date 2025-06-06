@@ -31,14 +31,26 @@ class TournamentService {
   }
 
   Future<Schedule> getSchedule(int tournamentId) async {
+    print('Requesting schedule for tournament: $tournamentId'); // Debug log
     final response = await _apiService.get('schedule/tournaments/$tournamentId');
+
+    print('Schedule response type: ${response.runtimeType}'); // Debug log
+    print('Schedule response: $response'); // Debug log
 
     // Vérifier si la réponse est une erreur (sous forme de Map)
     if (response is Map && response.containsKey('error')) {
       throw Exception(response['message'] ?? 'Erreur lors de la récupération du calendrier');
     }
 
-    return Schedule.fromJson(response);
+    // Convertir la réponse en Map<String, dynamic>
+    Map<String, dynamic> scheduleData;
+    if (response is Map) {
+      scheduleData = Map<String, dynamic>.from(response);
+    } else {
+      throw Exception('Format de réponse inattendu pour le calendrier');
+    }
+
+    return Schedule.fromJson(scheduleData);
   }
 
   Future<List<TeamStanding>> getStandings(int tournamentId) async {
@@ -63,6 +75,44 @@ class TournamentService {
     final standings = standingsJson.map((json) => TeamStanding.fromJson(json)).toList();
       
     return standings;
+  }
+
+  // Ajouter une méthode pour récupérer les détails d'un match spécifique
+  Future<Map<String, dynamic>> getMatchDetails(int matchId) async {
+    try {
+      print('Requesting match details for ID: $matchId'); // Debug log
+      final response = await _apiService.get('games/$matchId');
+      
+      print('Match details response type: ${response.runtimeType}'); // Debug log
+      print('Match details response: $response'); // Debug log
+
+      if (response is Map && response.containsKey('error')) {
+        throw Exception(response['message'] ?? 'Erreur lors de la récupération du match');
+      }
+
+      // Convertir la réponse en Map<String, dynamic>
+      if (response is Map) {
+        Map<String, dynamic> matchData = Map<String, dynamic>.from(response);
+        
+        // S'assurer que les scores sont présents et formatés correctement
+        if (matchData.containsKey('Team1_Score')) {
+          matchData['team1Score'] = matchData['Team1_Score'];
+        }
+        if (matchData.containsKey('Team2_Score')) {
+          matchData['team2Score'] = matchData['Team2_Score'];
+        }
+        if (matchData.containsKey('is_completed')) {
+          matchData['isCompleted'] = matchData['is_completed'] == 1 || matchData['is_completed'] == true;
+        }
+        
+        return matchData;
+      } else {
+        throw Exception('Format de réponse inattendu pour le match');
+      }
+    } catch (e) {
+      print('Error fetching match details: $e');
+      rethrow;
+    }
   }
 
   void dispose() {

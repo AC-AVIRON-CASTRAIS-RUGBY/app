@@ -1,10 +1,11 @@
 import 'package:aviron_castrais_rugby/screens/tournament_detail_screen.dart';
-import 'package:flutter/material.dart';
+import 'package:aviron_castrais_rugby/services/auth_service.dart';
 import 'package:aviron_castrais_rugby/services/tournament_service.dart';
 import 'package:aviron_castrais_rugby/models/tournament.dart';
 import 'package:aviron_castrais_rugby/config/api_config.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:flutter/material.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -77,13 +78,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   String _formatDate(String dateStr) {
     try {
+      if (dateStr.isEmpty) return 'Date non disponible';
       final date = DateTime.parse(dateStr);
       final formatter = DateFormat('EEEE d MMMM yyyy à HH:mm', 'fr_FR');
       String formatted = formatter.format(date);
       // Première lettre en majuscule
       return formatted[0].toUpperCase() + formatted.substring(1);
     } catch (e) {
-      return dateStr;
+      return 'Date non disponible';
     }
   }
 
@@ -100,17 +102,9 @@ class _HomeScreenState extends State<HomeScreen> {
               height: 30,
             ),
             const SizedBox(width: 8),
-            const Text('Aviron Castrais Rugby', style: TextStyle(color: Colors.white)),
+            const Text('Aviron Castrais', style: TextStyle(color: Colors.white)),
           ],
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
-            onPressed: () {
-              // Action pour l'accès arbitres
-            },
-          ),
-        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(60),
           child: Padding(
@@ -222,11 +216,41 @@ class _HomeScreenState extends State<HomeScreen> {
                 // Image du tournoi
                 AspectRatio(
                   aspectRatio: 16 / 6,
-                  child: Image.network(
-                    ApiConfig.resolveImageUrl(tournament.image),
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
+                  child: tournament.image.isNotEmpty 
+                    ? Image.network(
+                        tournament.image,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[300],
+                            child: const Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.image_not_supported, size: 50),
+                                  SizedBox(height: 8),
+                                  Text(
+                                    "Image non disponible",
+                                    style: TextStyle(fontSize: 14, color: Colors.black54),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                        loadingBuilder: (context, child, loadingProgress) {
+                          if (loadingProgress == null) return child;
+                          return Center(
+                            child: CircularProgressIndicator(
+                              value: loadingProgress.expectedTotalBytes != null
+                                  ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                                  : null,
+                            ),
+                          );
+                        },
+                      )
+                    : Container(
                         color: Colors.grey[300],
                         child: const Center(
                           child: Column(
@@ -241,20 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             ],
                           ),
                         ),
-                      );
-                    },
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                              loadingProgress.expectedTotalBytes!
-                              : null,
-                        ),
-                      );
-                    },
-                  ),
+                      ),
                 ),
 
                 // Contenu textuel
@@ -265,7 +276,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       // Nom du tournoi
                       Text(
-                        tournament.name,
+                        tournament.name.isNotEmpty ? tournament.name : 'Tournoi sans nom',
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
@@ -315,7 +326,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              tournament.location,
+                              tournament.location.isNotEmpty ? tournament.location : 'Lieu non précisé',
                               style: const TextStyle(fontSize: 15),
                             ),
                           ),

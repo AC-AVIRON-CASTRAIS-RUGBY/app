@@ -1,4 +1,4 @@
-package com.example.app
+package fr.notabl.acr
 
 import io.flutter.embedding.android.FlutterActivity
 

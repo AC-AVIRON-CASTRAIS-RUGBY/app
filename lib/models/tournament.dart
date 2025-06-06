@@ -5,7 +5,6 @@ class Tournament {
   final String image;
   final String startDate;
   final String location;
-  final int gameDuration;
   final int breakTime;
 
   Tournament({
@@ -15,20 +14,18 @@ class Tournament {
     required this.image,
     required this.startDate,
     required this.location,
-    required this.gameDuration,
     required this.breakTime,
   });
 
   factory Tournament.fromJson(Map<String, dynamic> json) {
     return Tournament(
-      tournamentId: json['Tournament_Id'],
-      name: json['name'],
-      description: json['description'],
-      image: json['image'],
-      startDate: json['start_date'],
-      location: json['location'],
-      gameDuration: json['game_duration'],
-      breakTime: json['break_time'],
+      tournamentId: json['Tournament_Id'] ?? 0,
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+      image: json['image'] ?? '',
+      startDate: json['start_date'] ?? '',
+      location: json['location'] ?? '',
+      breakTime: json['break_time'] ?? 0,
     );
   }
 }

@@ -167,7 +167,7 @@ class _TeamDetailScreenState extends State<TeamDetailScreen> {
                 child: widget.team.logo != null && widget.team.logo!.isNotEmpty
                     ? ClipOval(
                   child: Image.network(
-                    ApiConfig.resolveImageUrl(widget.team.logo!),
+                    widget.team.logo!,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
                       return Center(

@@ -26,7 +26,7 @@ class TeamStanding {
   factory TeamStanding.fromJson(Map<String, dynamic> json) {
     return TeamStanding(
       rank: json['rank'] ?? 0,
-      teamName: json['teamName'] ?? '',
+      teamName: json['name'] ?? '',
       matchesPlayed: json['matchesPlayed'] ?? 0,
       wins: json['wins'] ?? 0,
       draws: json['draws'] ?? 0,

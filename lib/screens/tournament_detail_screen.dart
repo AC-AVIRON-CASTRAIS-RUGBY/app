@@ -114,7 +114,7 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
           AspectRatio(
             aspectRatio: 16 / 9,
             child: Image.network(
-              ApiConfig.resolveImageUrl(widget.tournament.image),
+              widget.tournament.image,
               fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 return Container(
@@ -211,14 +211,6 @@ class _TournamentDetailScreenState extends State<TournamentDetailScreen> {
                 ),
 
                 const SizedBox(height: 16),
-
-                // Informations supplémentaires
-                _buildInfoCard(
-                    "Durée des matchs",
-                    "${widget.tournament.gameDuration} minutes"
-                ),
-
-                const SizedBox(height: 8),
 
                 _buildInfoCard(
                     "Temps de pause",

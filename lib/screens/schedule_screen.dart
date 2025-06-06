@@ -3,6 +3,7 @@ import 'package:aviron_castrais_rugby/models/tournament.dart';
 import 'package:aviron_castrais_rugby/models/schedule.dart';
 import 'package:aviron_castrais_rugby/services/tournament_service.dart';
 import 'package:intl/intl.dart';
+import 'package:aviron_castrais_rugby/screens/match_detail_screen.dart';
 
 class ScheduleScreen extends StatefulWidget {
   final Tournament tournament;
@@ -299,174 +300,240 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 ),
               ),
             ),
-            ...games.map(_buildGameCard).toList(),
+            ...games.map((game) => _buildGameCard(game, poolName)).toList(),
           ],
         );
       },
     );
   }
 
-  Widget _buildGameCard(Game game) {
-    // Vérifier si au moins une équipe a un score pour déterminer si le match est terminé
-    bool hasResults = game.isCompleted;
-    
+  Widget _buildGameCard(Game game, String poolName) {
+    final isCompleted = game.isCompleted;
+    final DateTime gameDateTime = DateTime.parse(game.startTime);
+    final bool isToday = DateFormat('yyyy-MM-dd').format(gameDateTime) == 
+                        DateFormat('yyyy-MM-dd').format(DateTime.now());
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
+      elevation: 3,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(15),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // En-tête avec l'heure et le statut
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.access_time,
-                      size: 16,
-                      color: Colors.grey[600],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      _formatTime(game.startTime),
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: hasResults ? Colors.green : Colors.orange,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    hasResults ? 'Terminé' : 'À venir',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
+      child: InkWell(
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MatchDetailScreen(
+                game: game,
+                poolName: poolName,
+              ),
             ),
-
-            const SizedBox(height: 12),
-
-            // Match
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Équipe 1
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        game.team1.name,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+          );
+        },
+        borderRadius: BorderRadius.circular(15),
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(15),
+            gradient: isCompleted
+                ? LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.green.withOpacity(0.1),
+                      Colors.white,
                     ],
-                  ),
-                ),
-
-                // Score
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[100],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${game.team1.score} - ${game.team2.score}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-
-                // Équipe 2
-                Expanded(
-                  flex: 2,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        game.team2.name,
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.right,
-                      ),
+                  )
+                : isToday
+                ? LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    colors: [
+                      Colors.orange.withOpacity(0.1),
+                      Colors.white,
                     ],
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 8),
-
-            // Arbitre et terrain
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  )
+                : null,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // En-tête avec l'heure et le statut
                 Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Icon(
-                      Icons.sports,
-                      size: 14,
-                      color: Colors.grey[600],
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Arbitre: ${game.referee}',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-                if (game.field != null)
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.place,
-                        size: 14,
-                        color: Colors.grey[600],
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Terrain ${game.field}',
-                        style: TextStyle(
-                          fontSize: 12,
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.access_time,
+                          size: 16,
                           color: Colors.grey[600],
                         ),
+                        const SizedBox(width: 4),
+                        Text(
+                          _formatTime(game.startTime),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: isCompleted ? Colors.green : Colors.orange,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        isCompleted ? 'Terminé' : 'À venir',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // Match
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // Équipe 1
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            game.team1.name,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Score
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[100],
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${game.team1.score} - ${game.team2.score}',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+
+                    // Équipe 2
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            game.team2.name,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.right,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 8),
+
+                // Arbitre et terrain
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.sports,
+                          size: 14,
+                          color: Colors.grey[600],
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Arbitre: ${game.referee}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (game.field != null)
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.place,
+                            size: 14,
+                            color: Colors.grey[600],
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Terrain ${game.field}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+
+                // Ajouter un indicateur cliquable
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF233268).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.info_outline, size: 16, color: Color(0xFF233268)),
+                      SizedBox(width: 4),
+                      Text(
+                        'Toucher pour voir les détails',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF233268),
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
+                ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -541,7 +608,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 ),
               ),
             ),
-            ...games.map(_buildGameCard).toList(),
+            ...games.map((game) => _buildGameCard(game, date)).toList(),
           ],
         );
       },

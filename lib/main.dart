@@ -1,4 +1,5 @@
 import 'package:aviron_castrais_rugby/screens/home_screen.dart';
+import 'package:aviron_castrais_rugby/screens/main_screen.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:flutter/material.dart';
 
@@ -18,7 +19,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: HomeScreen(),
+      home: const MainScreen(),
     );
   }
 }

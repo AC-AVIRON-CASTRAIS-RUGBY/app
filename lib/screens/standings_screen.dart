@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:aviron_castrais_rugby/models/tournament.dart';
 import 'package:aviron_castrais_rugby/models/standings.dart';
 import 'package:aviron_castrais_rugby/services/tournament_service.dart';
+import 'dart:async';
 
 class StandingsScreen extends StatefulWidget {
   final Tournament tournament;
@@ -17,15 +18,22 @@ class _StandingsScreenState extends State<StandingsScreen> {
   List<TeamStanding> _standings = [];
   bool _isLoading = true;
   String? _error;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadStandings();
+    // Actualisation automatique toutes les 30 secondes
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+      if (mounted) _loadStandings();
+    });
   }
 
   Future<void> _loadStandings() async {
     try {
+      if (!mounted) return; // Vérifier si le widget est encore monté
+      
       setState(() {
         _isLoading = true;
         _error = null;
@@ -33,11 +41,15 @@ class _StandingsScreenState extends State<StandingsScreen> {
 
       final standings = await _tournamentService.getStandings(widget.tournament.tournamentId);
 
+      if (!mounted) return; // Vérifier à nouveau avant setState
+      
       setState(() {
         _standings = standings;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return; // Vérifier avant setState en cas d'erreur
+      
       setState(() {
         _error = e.toString();
         _isLoading = false;
@@ -47,6 +59,7 @@ class _StandingsScreenState extends State<StandingsScreen> {
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _tournamentService.dispose();
     super.dispose();
   }
