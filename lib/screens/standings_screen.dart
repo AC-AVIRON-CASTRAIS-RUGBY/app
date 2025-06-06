@@ -15,7 +15,9 @@ class StandingsScreen extends StatefulWidget {
 
 class _StandingsScreenState extends State<StandingsScreen> {
   final TournamentService _tournamentService = TournamentService();
-  List<TeamStanding> _standings = [];
+  List<Category> _categories = [];
+  Category? _selectedCategory;
+  CategoryStandings? _categoryStandings;
   bool _isLoading = true;
   String? _error;
   Timer? _refreshTimer;
@@ -23,32 +25,38 @@ class _StandingsScreenState extends State<StandingsScreen> {
   @override
   void initState() {
     super.initState();
-    _loadStandings();
+    _loadCategories();
     // Actualisation automatique toutes les 30 secondes
     _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-      if (mounted) _loadStandings();
+      if (mounted && _selectedCategory != null) _loadStandings();
     });
   }
 
-  Future<void> _loadStandings() async {
+  Future<void> _loadCategories() async {
     try {
-      if (!mounted) return; // Vérifier si le widget est encore monté
+      if (!mounted) return;
       
       setState(() {
         _isLoading = true;
         _error = null;
       });
 
-      final standings = await _tournamentService.getStandings(widget.tournament.tournamentId);
+      final categories = await _tournamentService.getCategories(widget.tournament.tournamentId);
 
-      if (!mounted) return; // Vérifier à nouveau avant setState
+      if (!mounted) return;
       
       setState(() {
-        _standings = standings;
+        _categories = categories;
+        _selectedCategory = categories.isNotEmpty ? categories.first : null;
         _isLoading = false;
       });
+
+      // Charger les classements de la première catégorie
+      if (_selectedCategory != null) {
+        _loadStandings();
+      }
     } catch (e) {
-      if (!mounted) return; // Vérifier avant setState en cas d'erreur
+      if (!mounted) return;
       
       setState(() {
         _error = e.toString();
@@ -57,25 +65,52 @@ class _StandingsScreenState extends State<StandingsScreen> {
     }
   }
 
+  Future<void> _loadStandings() async {
+    if (_selectedCategory == null) return;
+    
+    try {
+      if (!mounted) return;
+      
+      setState(() {
+        _isLoading = true;
+        _error = null;
+      });
+
+      final standings = await _tournamentService.getCategoryStandings(
+        widget.tournament.tournamentId, 
+        _selectedCategory!.categoryId
+      );
+
+      if (!mounted) return;
+      
+      setState(() {
+        _categoryStandings = standings;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  void _onCategoryChanged(Category? category) {
+    if (category != null && category != _selectedCategory) {
+      setState(() {
+        _selectedCategory = category;
+      });
+      _loadStandings();
+    }
+  }
+
   @override
   void dispose() {
     _refreshTimer?.cancel();
     _tournamentService.dispose();
     super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: _loadStandings,
-      child: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-          ? _buildErrorWidget()
-          : _standings.isEmpty
-          ? _buildEmptyWidget()
-          : _buildStandingsTable(),
-    );
   }
 
   Widget _buildErrorWidget() {
@@ -127,24 +162,151 @@ class _StandingsScreenState extends State<StandingsScreen> {
     );
   }
 
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Sélecteur de catégorie
+        if (_categories.isNotEmpty) _buildCategorySelector(),
+        
+        // Contenu principal
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _loadStandings,
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                ? _buildErrorWidget()
+                : _categoryStandings == null || _categoryStandings!.standings.isEmpty
+                ? _buildEmptyWidget()
+                : _buildStandingsTable(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategorySelector() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF233268),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Catégorie d\'âge',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<Category>(
+                value: _selectedCategory,
+                hint: const Text('Sélectionner une catégorie'),
+                isExpanded: true,
+                onChanged: _onCategoryChanged,
+                items: _categories.map((category) {
+                  return DropdownMenuItem<Category>(
+                    value: category,
+                    child: Text(
+                      '${category.name.toUpperCase()} (${category.ageMin}-${category.ageMax} ans)',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildStandingsTable() {
+    final standings = _categoryStandings!.standings;
+    
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Info catégorie
+          Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                gradient: LinearGradient(
+                  begin: Alignment.centerLeft,
+                  end: Alignment.centerRight,
+                  colors: [
+                    const Color(0xFF233268).withOpacity(0.1),
+                    Colors.white,
+                  ],
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Classement ${_categoryStandings!.categoryName.toUpperCase()}',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF233268),
+                    ),
+                  ),
+                  if (_selectedCategory != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      _selectedCategory!.description,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 16),
+          
           // Podium pour le top 3
-          if (_standings.length >= 3) _buildPodium(),
+          if (standings.length >= 3) _buildPodium(),
           
           const SizedBox(height: 20),
           
           // Liste complète des équipes
-          ..._standings.asMap().entries.map((entry) {
-            final index = entry.key;
-            final standing = entry.value;
-            return _buildTeamCard(standing, index);
-          }).toList(),
+          ...standings.map((standing) => _buildTeamCard(standing)).toList(),
           
           const SizedBox(height: 16),
           
@@ -156,7 +318,8 @@ class _StandingsScreenState extends State<StandingsScreen> {
   }
 
   Widget _buildPodium() {
-    final top3 = _standings.take(3).toList();
+    final standings = _categoryStandings!.standings;
+    final top3 = standings.take(3).toList();
     
     return Card(
       elevation: 4,
@@ -297,7 +460,7 @@ class _StandingsScreenState extends State<StandingsScreen> {
     );
   }
 
-  Widget _buildTeamCard(TeamStanding standing, int index) {
+  Widget _buildTeamCard(TeamStanding standing) {
     final isTopThree = standing.rank <= 3;
     
     return Container(
@@ -326,6 +489,27 @@ class _StandingsScreenState extends State<StandingsScreen> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
+                // Logo de l'équipe
+                if (standing.logo != null)
+                  Container(
+                    width: 40,
+                    height: 40,
+                    margin: const EdgeInsets.only(right: 12),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        standing.logo!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Container(
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.sports_rugby, color: Colors.grey),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                
                 // Position badge
                 Container(
                   width: 35,

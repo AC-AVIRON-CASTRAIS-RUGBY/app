@@ -4,6 +4,9 @@ import 'package:aviron_castrais_rugby/services/api_service.dart';
 import 'package:aviron_castrais_rugby/models/tournament.dart';
 import 'package:aviron_castrais_rugby/models/schedule.dart';
 import 'package:aviron_castrais_rugby/models/standings.dart';
+import 'package:aviron_castrais_rugby/config/api_config.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class TournamentService {
   final ApiService _apiService = ApiService();
@@ -53,30 +56,6 @@ class TournamentService {
     return Schedule.fromJson(scheduleData);
   }
 
-  Future<List<TeamStanding>> getStandings(int tournamentId) async {
-    final response = await _apiService.get('pools/tournaments/$tournamentId/standings/all');
-
-    // Vérifier si la réponse est une erreur (sous forme de Map)
-    if (response is Map && response.containsKey('error')) {
-      throw Exception(response['message'] ?? 'Erreur lors de la récupération du classement');
-    }
-
-    // Gérer le cas où la réponse est une liste directement
-    List<dynamic> standingsJson;
-    if (response is List) {
-      standingsJson = response;
-    } else if (response is Map) {
-      // Si la réponse est un Map, chercher le tableau de données
-      standingsJson = response['data'] ?? [];
-    } else {
-      throw Exception('Format de réponse inattendu');
-    }
-
-    final standings = standingsJson.map((json) => TeamStanding.fromJson(json)).toList();
-      
-    return standings;
-  }
-
   // Ajouter une méthode pour récupérer les détails d'un match spécifique
   Future<Map<String, dynamic>> getMatchDetails(int matchId) async {
     try {
@@ -112,6 +91,40 @@ class TournamentService {
     } catch (e) {
       print('Error fetching match details: $e');
       rethrow;
+    }
+  }
+
+  Future<List<Category>> getCategories(int tournamentId) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/categories/tournaments/$tournamentId/');
+    
+    try {
+      final response = await http.get(url);
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        return data.map((json) => Category.fromJson(json)).toList();
+      } else {
+        throw Exception('Erreur lors de la récupération des catégories');
+      }
+    } catch (e) {
+      throw Exception('Erreur de connexion: $e');
+    }
+  }
+
+  Future<CategoryStandings> getCategoryStandings(int tournamentId, int categoryId) async {
+    final url = Uri.parse('${ApiConfig.baseUrl}/categories/tournaments/$tournamentId/$categoryId/standings');
+    
+    try {
+      final response = await http.get(url);
+      
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = jsonDecode(response.body);
+        return CategoryStandings.fromJson(data);
+      } else {
+        throw Exception('Erreur lors de la récupération des classements');
+      }
+    } catch (e) {
+      throw Exception('Erreur de connexion: $e');
     }
   }
 

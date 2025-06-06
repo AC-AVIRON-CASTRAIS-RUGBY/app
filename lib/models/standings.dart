@@ -1,55 +1,103 @@
+class Category {
+  final int categoryId;
+  final String name;
+  final int ageMin;
+  final int ageMax;
+  final String description;
+  final int gameDuration;
+  final int tournamentId;
+
+  Category({
+    required this.categoryId,
+    required this.name,
+    required this.ageMin,
+    required this.ageMax,
+    required this.description,
+    required this.gameDuration,
+    required this.tournamentId,
+  });
+
+  factory Category.fromJson(Map<String, dynamic> json) {
+    return Category(
+      categoryId: json['Category_Id'],
+      name: json['name'],
+      ageMin: json['age_min'],
+      ageMax: json['age_max'],
+      description: json['description'],
+      gameDuration: json['game_duration'],
+      tournamentId: json['Tournament_Id'],
+    );
+  }
+}
+
+class CategoryStandings {
+  final int categoryId;
+  final String categoryName;
+  final int tournamentId;
+  final List<TeamStanding> standings;
+
+  CategoryStandings({
+    required this.categoryId,
+    required this.categoryName,
+    required this.tournamentId,
+    required this.standings,
+  });
+
+  factory CategoryStandings.fromJson(Map<String, dynamic> json) {
+    return CategoryStandings(
+      categoryId: json['categoryId'],
+      categoryName: json['categoryName'],
+      tournamentId: json['tournamentId'],
+      standings: (json['standings'] as List)
+          .map((standing) => TeamStanding.fromJson(standing))
+          .toList(),
+    );
+  }
+}
+
 class TeamStanding {
-  final int rank;
+  final int teamId;
   final String teamName;
+  final String? logo;
   final int matchesPlayed;
   final int wins;
-  final int draws;
   final int losses;
+  final int draws;
   final int points;
-  final int pointsFor;
-  final int pointsAgainst;
-  final int pointsDifference;
+  final int goalsFor;
+  final int goalsAgainst;
+  final int goalDifference;
+  final int rank;
 
   TeamStanding({
-    required this.rank,
+    required this.teamId,
     required this.teamName,
+    this.logo,
     required this.matchesPlayed,
     required this.wins,
-    required this.draws,
     required this.losses,
+    required this.draws,
     required this.points,
-    required this.pointsFor,
-    required this.pointsAgainst,
-    required this.pointsDifference,
+    required this.goalsFor,
+    required this.goalsAgainst,
+    required this.goalDifference,
+    required this.rank,
   });
 
   factory TeamStanding.fromJson(Map<String, dynamic> json) {
     return TeamStanding(
-      rank: json['rank'] ?? 0,
-      teamName: json['name'] ?? '',
-      matchesPlayed: json['matchesPlayed'] ?? 0,
-      wins: json['wins'] ?? 0,
-      draws: json['draws'] ?? 0,
-      losses: json['losses'] ?? 0,
-      points: json['points'] ?? 0,
-      pointsFor: json['pointsFor'] ?? 0,
-      pointsAgainst: json['pointsAgainst'] ?? 0,
-      pointsDifference: json['pointsDifference'] ?? 0,
+      teamId: json['Team_Id'],
+      teamName: json['name'],
+      logo: json['logo'],
+      matchesPlayed: json['matchesPlayed'],
+      wins: json['wins'],
+      losses: json['losses'],
+      draws: json['draws'],
+      points: json['points'],
+      goalsFor: json['goalsFor'],
+      goalsAgainst: json['goalsAgainst'],
+      goalDifference: json['goalDifference'],
+      rank: json['rank'],
     );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'rank': rank,
-      'teamName': teamName,
-      'matchesPlayed': matchesPlayed,
-      'wins': wins,
-      'draws': draws,
-      'losses': losses,
-      'points': points,
-      'pointsFor': pointsFor,
-      'pointsAgainst': pointsAgainst,
-      'pointsDifference': pointsDifference,
-    };
   }
 }
