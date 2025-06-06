@@ -101,7 +101,13 @@ class _RefereeMatchesScreenState extends State<RefereeMatchesScreen> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () async {
+            // Déconnecter l'arbitre et retourner à l'écran précédent
+            await _authService.logout();
+            if (mounted) {
+              Navigator.of(context).pop();
+            }
+          },
         ),
         actions: [
           IconButton(
@@ -110,12 +116,6 @@ class _RefereeMatchesScreenState extends State<RefereeMatchesScreen> {
               await _authService.logout();
               if (mounted) {
                 Navigator.of(context).pop();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Déconnexion réussie'),
-                    backgroundColor: Colors.orange,
-                  ),
-                );
               }
             },
           ),

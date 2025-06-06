@@ -20,9 +20,6 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   String? _error;
   final ScrollController _scrollController = ScrollController();
-  final bool _isSearching = false;
-  String _searchQuery = '';
-  List<Tournament> _filteredTournaments = [];
 
   @override
   void initState() {
@@ -47,7 +44,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
       setState(() {
         _tournaments = tournaments;
-        _filteredTournaments = tournaments;
         _isLoading = false;
       });
     } catch (e) {
@@ -56,16 +52,6 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
     }
-  }
-
-  void _filterTournaments(String query) {
-    setState(() {
-      _searchQuery = query;
-      _filteredTournaments = _tournaments
-          .where((tournament) =>
-          tournament.name.toLowerCase().contains(query.toLowerCase()))
-          .toList();
-    });
   }
 
   @override
@@ -104,35 +90,6 @@ class _HomeScreenState extends State<HomeScreen> {
             const Text('Aviron Castrais', style: TextStyle(color: Colors.white)),
           ],
         ),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(60),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: TextField(
-                style: const TextStyle(color: Colors.black),
-                decoration: InputDecoration(
-                  hintText: 'Rechercher un tournoi...',
-                  hintStyle: TextStyle(color: Colors.grey[600]),
-                  prefixIcon: null,
-                  suffixIcon: Icon(Icons.search, color: Colors.grey[600]),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(20),
-                    borderSide: BorderSide.none,
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                ),
-                onChanged: _filterTournaments,
-              ),
-            ),
-          ),
-        ),
       ),
       body: RefreshIndicator(
         onRefresh: _loadTournaments,
@@ -140,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ? const Center(child: CircularProgressIndicator())
             : _error != null
             ? _buildErrorWidget()
-            : _filteredTournaments.isEmpty
+            : _tournaments.isEmpty
             ? _buildEmptyWidget()
             : _buildTournamentsList(),
       ),
@@ -190,9 +147,9 @@ class _HomeScreenState extends State<HomeScreen> {
       controller: _scrollController,
       physics: const AlwaysScrollableScrollPhysics(),
       padding: const EdgeInsets.all(12),
-      itemCount: _filteredTournaments.length,
+      itemCount: _tournaments.length,
       itemBuilder: (context, index) {
-        final tournament = _filteredTournaments[index];
+        final tournament = _tournaments[index];
         return GestureDetector(
           onTap: () {
             Navigator.push(

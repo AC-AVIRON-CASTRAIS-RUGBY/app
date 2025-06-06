@@ -41,6 +41,7 @@ class _RefereeLoginScreenState extends State<RefereeLoginScreen> {
       );
       
       if (mounted) {
+        // Remplacer l'écran actuel par l'écran des matchs
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(
             builder: (context) => const RefereeMatchesScreen(),
